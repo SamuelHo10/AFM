@@ -23,16 +23,20 @@ def analyse_data(file_path, output_list):
     total = no_interaction + specific + non_specific
     
     
-    el = [Path(file_path).stem, no_interaction, specific, non_specific, no_interaction/total, specific/total, non_specific/total]
+    el = [Path(file_path).stem, no_interaction, specific, non_specific, round(no_interaction/total*100,1), round(specific/total*100,1), round(non_specific/total*100,1)]
     
-    file_names = [x[0] for x in output_list]
+    for i in range(len(output_list)):
+        if output_list[i][0] == el[0]:
+            output_list.pop(i)
+            break
     
-    if el[0] not in file_names:
-        output_list.append(el)
+    output_list.append(el)
     
     data = data[(data["Fitted Segment Count"] > 1) | ((data["Fitted Segment Count"] == 1) & (data["Minimum Position [m]"] >= min_position_threshold))]
 
     data = data.drop(columns=['Filename', 'Position Index', 'X Position', 'Y Position','Baseline Offset [N]', 'Baseline Slope [N/m]','Contact Point Offset [m]', 'Minimum Value [N]','Minimum Position [m]', 'Filter Group', 'Lower Bound [m]','Upper Bound [m]', 'Fitted Segment Count'])
+
+    data = data.round(1)
 
     return data
 
