@@ -20,13 +20,13 @@ def analyse_data(file_path):
     
     data = pd.read_csv(file_path, sep="\t")
 
-    # print(data.columns)
-    
+    # Adjust units
     data = units.change_column_prefix(data, "Bending Length [m]", "p")
     data = units.change_column_prefix(data, "Contour Length [m]", "n")
     data = units.change_column_prefix(data, "Residual RMS [N]", "p")
     data = units.change_column_prefix(data, "Breaking Force [N]", "p")
 
+    # Filter out data that is not within the expected range
     data = data[(data["Bending Length [pm]"] < 4000) & (data["Bending Length [pm]"] > 20) & (data["Contour Length [nm]"] < 5000) & (data["Contour Length [nm]"] > 300) & (data["Residual RMS [pN]"] < 25)]
 
     return data
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         new_name = segments[0] + segments[2]
         
         breaking_forces[new_name] = filtered_data["Breaking Force [pN]"].tolist()
-        # histogram(filtered_data["Breaking Force [pN]"], "Breaking Force [pN]", "Frequency")
+        histogram(filtered_data["Breaking Force [pN]"], "Breaking Force [pN]", "Frequency")
 
         # Save the filtered data to a new CSV file
         filtered_data.to_csv(f"chainfits\\{Path(file).stem}_filtered.csv", index=False)
