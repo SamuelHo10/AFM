@@ -1,5 +1,3 @@
-import pandas as pd
-
 PREFIXES = {
     "y": 1e-24,
     "z": 1e-21,
