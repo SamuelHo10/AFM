@@ -208,7 +208,7 @@ def compile_parameter(filtered_data, parameter_name):
 
 if __name__ == "__main__":
     
-    # Prompt the user to select files
+    # For testing purposes only.
     files =[r"c:\Users\samue\Downloads\OneDrive_2_5-28-2024\20230306-VFB-E.txt", r"c:\Users\samue\Downloads\OneDrive_2_5-28-2024\20230306-VFB-M.txt" ,r"c:\Users\samue\Downloads\OneDrive_2_5-28-2024\20230306-VFB-CD.txt"]
     directory = "."
 
