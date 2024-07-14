@@ -86,15 +86,18 @@ class Help(tk.Frame):
         
         self.label = tk.Label(self, text="Help")
         self.label.pack()         
-        self.text = tk.Text(self, height=20, width=50, wrap=tk.WORD)
+        self.text = tk.Text(self, height=38, width=50, wrap=tk.WORD)
         self.text.pack()
 
         
         text = """
 General Mode: 
-The filter data button will output the files containing only specific or non-specific interaction. Units for adhesion and area will be changed to pN and aJ respectively. Finally, the interaction counts will be saved in interaction_count.csv.
+Clicking on the run button will filter out all the data with no interaction, and the units for adhesion and area will be changed to pN and aJ respectively. Only the adhesion and area columns are kept. When the save filtered data checkbox is enabled, it will save the filtered data in a folder called filtered_general_data, and when the save interaction count checkbox is enabled, it will save the interaction counts in a file called interaction_count.csv.
 
+Chain Fit Mode:
+Clicking on the run button will filter out all the data outside of the expected ranges, and it will adjust the units for bending length, contour length, residual RMS, and breaking force to pm, pm, pN, and pN respectively. The data will be saved in a folder called filtered_chain_fits_data when the save filtered data checkbox is enabled. Likewise breaking_forces.csv and count_num_fitting_segments.csv files will be generated when their respective checkboxes are enabled. 
 
+As of now, the histogram and pie chart feature is only applicable to data collected studying the different root regions: maturation, elongation, and cell division. For successful graph generation, the file names must end with -M, -E, or -CD representing the three root sections (ex. 20240713-M.tsv).
         
         """
 
@@ -246,10 +249,6 @@ class FileSelector(tk.Frame):
 
         for file in files:
             self.list_box.insert(tk.END, file)
-        
-        # Reset master variables
-        self.master.filtered_data = None
-        self.master.breaking_forces = None
     
     def get_files(self):
         return self.list_box.get(0, tk.END)
