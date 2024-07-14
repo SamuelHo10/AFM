@@ -1,5 +1,7 @@
 import tkinter as tk
+from tkinter import filedialog
 import data_analysis as da
+import graph
 
 class AFMDataAnalyzer(tk.Tk):
     def __init__(self):
@@ -14,19 +16,25 @@ class AFMDataAnalyzer(tk.Tk):
         self.title("AFM Data Analyser")
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
-
-        # Create bar
-        self.button_frame = tk.Frame(self)
-        self.button_frame.pack()
         
-        self.button_frame_bg = tk.Frame(self.button_frame, bg="orange", width=self.width,height=self.bar_height)
-        self.button_frame_bg.grid(row=0, column=0,columnspan=2) 
-
-        self.general_button = tk.Button(self.button_frame, text="General AFM Data", command=lambda: self.change_mode("General"))
-        self.general_button.grid(row=0, column=0)
-
-        self.chainfit_button = tk.Button(self.button_frame, text="Chain Fit Data", command=lambda: self.change_mode("Chain Fit"))
-        self.chainfit_button.grid(row=0, column=1)
+        # Creating Menubar 
+        menubar = tk.Menu(self) 
+        
+        # Adding File Menu and commands 
+        file = tk.Menu(menubar, tearoff = 0) 
+        menubar.add_cascade(label ='File', menu = file) 
+        file.add_command(label ='Analyse General', command = lambda: self.change_mode("General")) 
+        file.add_command(label ='Analyse Chainfits', command = lambda: self.change_mode("Chain Fit")) 
+        file.add_separator() 
+        file.add_command(label ='Exit', command = self.destroy) 
+        
+        # Adding Help Menu 
+        help_ = tk.Menu(menubar, tearoff = 0) 
+        menubar.add_cascade(label ='Help', menu = help_) 
+        help_.add_command(label ='Help', command = lambda: self.change_mode("Help")) 
+        
+        # display Menu 
+        self.config(menu = menubar) 
         
         # Create Scrollbar
         self.canvas = tk.Canvas(self, width=self.width, height=self.height-self.bar_height)
@@ -35,7 +43,7 @@ class AFMDataAnalyzer(tk.Tk):
         self.canvas.config(yscrollcommand=self.scrollbar.set)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # self.change_mode("Chain Fit")
+        self.change_mode("Chain Fit")
         
     def change_mode(self, mode):
         
@@ -51,6 +59,8 @@ class AFMDataAnalyzer(tk.Tk):
                 self.page = GeneralAFM(self.canvas)
             case "Chain Fit":
                 self.page = ChainFit(self.canvas)
+            case "Help":
+                self.page = Help(self.canvas)
             case _:
                 raise ValueError("Invalid mode")
         
@@ -69,7 +79,28 @@ class AFMDataAnalyzer(tk.Tk):
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-                
+
+class Help(tk.Frame):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.label = tk.Label(self, text="Help")
+        self.label.pack()         
+        self.text = tk.Text(self, height=20, width=50, wrap=tk.WORD)
+        self.text.pack()
+
+        
+        text = """
+General Mode: 
+The filter data button will output the files containing only specific or non-specific interaction. Units for adhesion and area will be changed to pN and aJ respectively. Finally, the interaction counts will be saved in interaction_count.csv.
+
+
+        
+        """
+
+        self.text.insert(tk.END, text)
+        
+        self.text.config(state=tk.DISABLED)
 
 class GeneralAFM(tk.Frame):
     def __init__(self, *args, **kwargs):
@@ -105,78 +136,102 @@ class GeneralAFM(tk.Frame):
         
         min_position_threshold = float(self.input_min_position_threshold.get_input())
         
-        self.filtered_data = da.analyze_general(files, directory, min_position_threshold)
+        self.filtered_data = da.analyse_general(files, directory, min_position_threshold)
         
 class ChainFit(tk.Frame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.filtered_data = None
-        self.breaking_forces = None
+        self.save_filtered_data = tk.BooleanVar()
+        self.save_breaking_forces = tk.BooleanVar()
+        self.save_breaking_forces_histograms = tk.BooleanVar()
+        self.save_count_num_fitting_segments = tk.BooleanVar()
+        self.save_fitting_segment_pie_charts = tk.BooleanVar()
         
-        self.label = tk.Label(self, text="Chain Fit AFM Data")
         self.columnconfigure(0, weight=1)
-        self.label.grid(row=0, column=0)
         
-        self.file_selector = FileSelector(self)
-        self.file_selector.grid(row=1, column=0)
+        self.elements=[
+            tk.Label(self, text="Chain Fit AFM Data"),
+            FileSelector(self),
+            DirectorySelector(self),
+            InputBox(self, name="Max Bending Length [pm]: ", default_value="4000"),
+            InputBox(self, name="Min Bending Length [pm]: ", default_value="20"),
+            InputBox(self, name="Max Contour Length [nm]: ", default_value="5000"),
+            InputBox(self, name="Min Contour Length [nm]: ", default_value="300"),
+            InputBox(self, name="Max Residual RMS [pN]: ", default_value="25"),
+            tk.Checkbutton(self, text = "Save Filtered Data", variable = self.save_filtered_data),
+            tk.Checkbutton(self, text = "Save Breaking Forces Data", variable = self.save_breaking_forces),
+            InputBox(self, name="X-Axis Upper Bound: ", default_value="500"),
+            tk.Checkbutton(self, text = "Save Breaking Forces Histograms (Based on Root Regions)", variable = self.save_breaking_forces_histograms),
+            tk.Checkbutton(self, text = "Save Number of Fitting Segments Data", variable = self.save_count_num_fitting_segments),
+            tk.Checkbutton(self, text = "Save Fitting Segments Pie Charts (Based on Root Regions)", variable = self.save_fitting_segment_pie_charts),
+            tk.Button(self, text="Run", command=self.run)
+        ]
         
-        self.directory_selector = DirectorySelector(self)
-        self.directory_selector.grid(row=3, column=0)
-        
-        self.input_max_bending_length = InputBox(self, name="Max Bending Length [pm]: ", default_value="4000")
-        self.input_max_bending_length.grid(row=4, column=0)
-        
-        self.input_min_bending_length = InputBox(self, name="Min Bending Length [pm]: ", default_value="20")
-        self.input_min_bending_length.grid(row=5, column=0)
-        
-        self.input_max_contour_length = InputBox(self, name="Max Contour Length [nm]: ", default_value="5000")
-        self.input_max_contour_length.grid(row=6, column=0)
-        
-        self.input_min_contour_length = InputBox(self, name="Min Contour Length [nm]: ", default_value="300")
-        self.input_min_contour_length.grid(row=7, column=0)
-        
-        self.input_max_residual_rms = InputBox(self, name="Max Residual RMS [pN]: ", default_value="25")
-        self.input_max_residual_rms.grid(row=8, column=0)
-        
-        self.filter_button = tk.Button(self, text="Filter Data", command=self.filter_data)
-        self.filter_button.grid(row=9, column=0)
-        
-        self.input_x_axis_upper_bound = InputBox(self, name="X-Axis Upper Bound: ", default_value="500")
-        self.input_x_axis_upper_bound.grid(row=10, column=0)
-        
-        self.graph_button = tk.Button(self, text="Save Breaking Force Graphs", command=self.create_graphs)
-        self.graph_button.grid(row=11, column=0)
-        
-        for i in range(12):
+        for i in range(len(self.elements)):
+            self.elements[i].grid(row=i, column=0)
             self.grid_rowconfigure(i, minsize=40)
     
-    def filter_data(self):
-        files = self.file_selector.get_files()
+    def run(self):
+        files = self.elements[1].get_files()
         
         if len(files) == 0:
             tk.messagebox.showerror("Error", "No files selected.")
             return
         
-        directory = self.directory_selector.get_directory()
+        directory = self.elements[2].get_directory()
 
-        max_bending_length = float(self.input_max_bending_length.get_input())
-        min_bending_length = float(self.input_min_bending_length.get_input())
-        max_contour_length = float(self.input_max_contour_length.get_input())
-        min_contour_length = float(self.input_min_contour_length.get_input())
-        max_residual_rms = float(self.input_max_residual_rms.get_input())
+        max_bending_length = float(self.elements[3].get_input())
+        min_bending_length = float(self.elements[4].get_input())
+        max_contour_length = float(self.elements[5].get_input())
+        min_contour_length = float(self.elements[6].get_input())
+        max_residual_rms = float(self.elements[7].get_input())
         
-        self.filtered_data = da.analyze_chain_fit(files, directory, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms)
-    
-        self.breaking_forces = da.compile_parameter(self.filtered_data, directory, "Breaking Force [pN]", "breaking_forces")
-    
-    def create_graphs(self):
+        filtered_data = da.analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms)
+        
+        if self.save_filtered_data.get():
+            da.save_filtered_dfs(filtered_data, f"{directory}\\filtered_chain_fits_data")
+        
+        breaking_forces_dictionary, breaking_forces_df =da.compile_parameter(filtered_data, directory, "Breaking Force [pN]", "breaking_forces")
+        
+        if self.save_breaking_forces.get():
+            breaking_forces_df.to_csv(f"{directory}\\breaking_forces.csv", index=False)
+        
+        if self.save_breaking_forces_histograms.get():
+            graph.create_histograms_root(breaking_forces_dictionary, directory, float(self.elements[10].get_input()))
+        
+        count_num_fitting_segments_dictionary, count_num_fitting_segments_df = da.count_fitting_segments(filtered_data, directory)
+
+        if(self.save_count_num_fitting_segments.get()):
+            count_num_fitting_segments_df.to_csv(f"{directory}\\count_num_fitting_segments.csv", index=False)
+        
+        if(self.save_fitting_segment_pie_charts.get()):
+            graph.create_pie_charts_root(count_num_fitting_segments_dictionary, directory)
+            
+            
+    def create_breaking_force_graphs(self):
         if self.breaking_forces == None:
             tk.messagebox.showerror("Error", "Need to filter data first.")
             return
         
         da.create_histograms(self.breaking_forces, self.directory_selector.get_directory(), float(self.input_x_axis_upper_bound.get_input()))
+    
+    def count_fitting_segments(self):
+        if self.filtered_data == None:
+            tk.messagebox.showerror("Error", "Need to filter data first.")
+            return
         
+        self.count_num_fitting_segments = da.count_fitting_segments(self.filtered_data, self.directory_selector.get_directory())
+    
+    def create_fitting_segment_graphs(self):
+        if self.count_num_fitting_segments == None:
+            tk.messagebox.showerror("Error", "Need to count fitting segments first.")
+            return
+        
+        da.create_pie_charts(self.count_num_fitting_segments, self.directory_selector.get_directory())
+    
+        
+    
         
 class FileSelector(tk.Frame):
     def __init__(self, *args, **kwargs):
@@ -202,7 +257,7 @@ class FileSelector(tk.Frame):
         self.file_button.grid(row=2, column=0, columnspan=2)
         
     def select_file(self):
-        files = tk.filedialog.askopenfilenames(filetypes=[("File Types:", "*.tsv *.txt")])
+        files = filedialog.askopenfilenames(filetypes=[("File Types:", "*.tsv *.txt")])
 
         self.list_box.delete(0, tk.END)
 
@@ -231,7 +286,7 @@ class DirectorySelector(tk.Frame):
         self.button.grid(row=0, column=2)
         
     def select_directory(self):
-        directory = tk.filedialog.askdirectory()
+        directory = filedialog.askdirectory()
         self.entry.delete(0, tk.END)
         self.entry.insert(0, directory)
         
