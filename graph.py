@@ -3,8 +3,6 @@ import matplotlib as mpl
 import numpy as np
 import os
 
-PLOT_SAVE_FOLDER = "graphs"
-
 
 
 def fix_labels(labels, tooclose=0.1, outer_radius = 1.25):
@@ -75,6 +73,9 @@ def create_pie_chart_set(dictionary, filename, directory):
     figure.tight_layout()
     
     plt.savefig(f"{directory}\\{filename}.svg")
+    
+    plt.close()
+    
 
 def create_sub_dictionaries(dictionary):
     """
@@ -107,8 +108,8 @@ def create_pie_charts_root(dictionary, directory):
     directory (str): The directory to save the pie charts in.
     """
     
-    if not os.path.exists(f"{directory}\\{PLOT_SAVE_FOLDER}"):
-        os.makedirs(f"{directory}\\")
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     
     names = create_sub_dictionaries(dictionary)
     
@@ -122,7 +123,9 @@ def create_pie_charts_root(dictionary, directory):
         # Reorder dictionary
         names[name] = {k: names[name][k] for k in ["M", "E", "CD"]}
     
-        create_pie_chart_set(names[name], f"{name}-Pie", f"{directory}\\{PLOT_SAVE_FOLDER}")    
+        create_pie_chart_set(names[name], f"{name}-Pie", directory)
+    
+
 
 
 
@@ -164,7 +167,9 @@ def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_
     # Adjust y axis
     plt.setp(axis, ylim=max([a.get_ylim() for a in axis.reshape(-1)]))
     
-    plt.savefig(f"{directory}\\{PLOT_SAVE_FOLDER}\\{filename}.svg")
+    plt.savefig(f"{directory}\\{filename}.svg")
+    
+    plt.close()
 
 
 def create_histograms_root(dictionary, directory, x_axis_upper_bound, x_label="Breaking Force (pN)"):
@@ -178,8 +183,8 @@ def create_histograms_root(dictionary, directory, x_axis_upper_bound, x_label="B
     x_label (str): The label for the x-axis.
     """
     
-    if not os.path.exists(f"{directory}\\{PLOT_SAVE_FOLDER}"):
-        os.makedirs(f"{directory}\\{PLOT_SAVE_FOLDER}")
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     
     # Create dictionary to store combined histogram data
     final = {"CD": [], "E": [], "M": []}
@@ -204,4 +209,6 @@ def create_histograms_root(dictionary, directory, x_axis_upper_bound, x_label="B
     
     create_histogram_set(final, "Final Frequency", "Frequency", directory, x_label, x_axis_range=[0,x_axis_upper_bound])
     create_histogram_set(final, "Final Count", "Count", directory, x_label, x_axis_range=[0,x_axis_upper_bound])
+    
+    
     
