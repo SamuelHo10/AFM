@@ -105,38 +105,44 @@ The filter data button will output the files containing only specific or non-spe
 class GeneralAFM(tk.Frame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-                
-        self.label = tk.Label(self, text="General AFM Data")
+        
+        self.save_filtered_data = tk.BooleanVar()
+        self.save_interaction_count = tk.BooleanVar()
+        
         self.columnconfigure(0, weight=1)
-        self.label.grid(row=0, column=0)
+
+        self.elements = [
+            tk.Label(self, text="Analyse General AFM Data"),
+            FileSelector(self),
+            DirectorySelector(self),
+            InputBox(self, name="Min Position Threshold [nm]: ", default_value="300e-9"),
+            tk.Checkbutton(self, text = "Save Filtered Data", variable = self.save_filtered_data),
+            tk.Checkbutton(self, text = "Save Interaction Count Data", variable = self.save_interaction_count),
+            tk.Button(self, text="Run", command=self.run)
+        ]
         
-        self.file_selector = FileSelector(self)
-        self.file_selector.grid(row=1, column=0)
-        
-        self.directory_selector = DirectorySelector(self)
-        self.directory_selector.grid(row=3, column=0)
-        
-        self.input_min_position_threshold = InputBox(self, name="Min Position Threshold [nm]: ", default_value="300e-9")
-        self.input_min_position_threshold.grid(row=4, column=0)
-        
-        self.analyze_button = tk.Button(self, text="Filter Data", command=self.analyze_data)
-        self.analyze_button.grid(row=5, column=0)
-        
-        for i in range(5):
+        for i in range(len(self.elements)):
+            self.elements[i].grid(row=i, column=0)
             self.grid_rowconfigure(i, minsize=40)
     
-    def analyze_data(self):
-        files = self.file_selector.get_files()
+    def run(self):
+        files = self.elements[1].get_files()
         
         if len(files) == 0:
             tk.messagebox.showerror("Error", "No files selected.")
             return
         
-        directory = self.directory_selector.get_directory()
+        directory = self.elements[2].get_directory()
         
-        min_position_threshold = float(self.input_min_position_threshold.get_input())
+        min_position_threshold = float(self.elements[3].get_input())
         
-        self.filtered_data = da.analyse_general(files, directory, min_position_threshold)
+        filtered_data, interaction_count_df = da.analyse_general(files, directory, min_position_threshold)
+        
+        if self.save_filtered_data.get():
+            da.save_filtered_dfs(filtered_data, f"{directory}\\filtered_general_data")
+        
+        if self.save_interaction_count.get():
+            interaction_count_df.to_csv(f"{directory}\\interaction_count.csv", index=False)
         
 class ChainFit(tk.Frame):
     def __init__(self, *args, **kwargs):
@@ -151,7 +157,7 @@ class ChainFit(tk.Frame):
         self.columnconfigure(0, weight=1)
         
         self.elements=[
-            tk.Label(self, text="Chain Fit AFM Data"),
+            tk.Label(self, text="Analyse Chain Fit AFM Data"),
             FileSelector(self),
             DirectorySelector(self),
             InputBox(self, name="Max Bending Length [pm]: ", default_value="4000"),
@@ -192,44 +198,21 @@ class ChainFit(tk.Frame):
         if self.save_filtered_data.get():
             da.save_filtered_dfs(filtered_data, f"{directory}\\filtered_chain_fits_data")
         
-        breaking_forces_dictionary, breaking_forces_df =da.compile_parameter(filtered_data, directory, "Breaking Force [pN]", "breaking_forces")
+        breaking_forces_dictionary, breaking_forces_df =da.compile_parameter(filtered_data, "Breaking Force [pN]")
         
         if self.save_breaking_forces.get():
             breaking_forces_df.to_csv(f"{directory}\\breaking_forces.csv", index=False)
         
         if self.save_breaking_forces_histograms.get():
-            graph.create_histograms_root(breaking_forces_dictionary, directory, float(self.elements[10].get_input()))
+            graph.create_histograms_root(breaking_forces_dictionary, f"{directory}\\graphs", float(self.elements[10].get_input()))
         
-        count_num_fitting_segments_dictionary, count_num_fitting_segments_df = da.count_fitting_segments(filtered_data, directory)
+        count_num_fitting_segments_dictionary, count_num_fitting_segments_df = da.count_fitting_segments(filtered_data)
 
         if(self.save_count_num_fitting_segments.get()):
             count_num_fitting_segments_df.to_csv(f"{directory}\\count_num_fitting_segments.csv", index=False)
         
         if(self.save_fitting_segment_pie_charts.get()):
-            graph.create_pie_charts_root(count_num_fitting_segments_dictionary, directory)
-            
-            
-    def create_breaking_force_graphs(self):
-        if self.breaking_forces == None:
-            tk.messagebox.showerror("Error", "Need to filter data first.")
-            return
-        
-        da.create_histograms(self.breaking_forces, self.directory_selector.get_directory(), float(self.input_x_axis_upper_bound.get_input()))
-    
-    def count_fitting_segments(self):
-        if self.filtered_data == None:
-            tk.messagebox.showerror("Error", "Need to filter data first.")
-            return
-        
-        self.count_num_fitting_segments = da.count_fitting_segments(self.filtered_data, self.directory_selector.get_directory())
-    
-    def create_fitting_segment_graphs(self):
-        if self.count_num_fitting_segments == None:
-            tk.messagebox.showerror("Error", "Need to count fitting segments first.")
-            return
-        
-        da.create_pie_charts(self.count_num_fitting_segments, self.directory_selector.get_directory())
-    
+            graph.create_pie_charts_root(count_num_fitting_segments_dictionary, f"{directory}\\graphs")
         
     
         
