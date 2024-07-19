@@ -43,7 +43,7 @@ class AFMDataAnalyzer(tk.Tk):
         self.canvas.config(yscrollcommand=self.scrollbar.set)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.change_mode("Chain Fit")
+        # self.change_mode("Chain Fit")
         
     def change_mode(self, mode):
         
@@ -111,6 +111,7 @@ class GeneralAFM(tk.Frame):
         
         self.save_filtered_data = tk.BooleanVar()
         self.save_interaction_count = tk.BooleanVar()
+        self.save_area_adhesion = tk.BooleanVar()
         
         self.columnconfigure(0, weight=1)
 
@@ -118,9 +119,10 @@ class GeneralAFM(tk.Frame):
             tk.Label(self, text="Analyse General AFM Data"),
             FileSelector(self),
             DirectorySelector(self),
-            InputBox(self, name="Min Position Threshold [nm]: ", default_value="300e-9"),
+            InputBox(self, name="Min Position Threshold [nm]: ", default_value="300"),
             tk.Checkbutton(self, text = "Save Filtered Data", variable = self.save_filtered_data),
             tk.Checkbutton(self, text = "Save Interaction Count Data", variable = self.save_interaction_count),
+            tk.Checkbutton(self, text = "Save Area and Adhesion Data", variable = self.save_area_adhesion),
             tk.Button(self, text="Run", command=self.run)
         ]
         
@@ -139,13 +141,17 @@ class GeneralAFM(tk.Frame):
         
         min_position_threshold = float(self.elements[3].get_input())
         
-        filtered_data, interaction_count_df = da.analyse_general(files, directory, min_position_threshold)
+        filtered_data, interaction_count_df = da.analyse_general(files, min_position_threshold)
         
         if self.save_filtered_data.get():
             da.save_filtered_dfs(filtered_data, f"{directory}\\filtered_general_data")
         
         if self.save_interaction_count.get():
             interaction_count_df.to_csv(f"{directory}\\interaction_count.csv", index=False)
+        
+        if self.save_area_adhesion.get():
+            _, area_adhesion_df = da.compile_parameter(filtered_data, ["Area [aJ]", "Adhesion [pN]"])
+            area_adhesion_df.to_csv(f"{directory}\\area_adhesion.csv", index=False)
         
 class ChainFit(tk.Frame):
     def __init__(self, *args, **kwargs):

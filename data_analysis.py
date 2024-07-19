@@ -43,13 +43,12 @@ def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour
 
 
 
-def analyse_general(files, directory, min_position_threshold):
+def analyse_general(files, min_position_threshold):
     """
     This function analyzes the general data and filters the data considered as having no interaction and adjusts units. It also counts the number of interactions for each interaction type.
     
     Parameters:
     files (list): The list of files to analyze.
-    directory (str): The directory to save the filtered data.
     min_position_threshold (float): The minimum position threshold [m].
     
     Returns:
@@ -64,20 +63,18 @@ def analyse_general(files, directory, min_position_threshold):
 
         df = units.change_column_prefix(df, "Adhesion [N]", "p")
         df = units.change_column_prefix(df, "Area [J]", "a")
+        df = units.change_column_prefix(df, "Minimum Position [m]", "n")
 
         # Count interactions and append them to the interaction counts list
-        no_interaction = ((df["Fitted Segment Count"] == 0) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [m]"] < min_position_threshold))).sum()
-        specific = ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [m]"] >= min_position_threshold)).sum()
+        no_interaction = ((df["Fitted Segment Count"] == 0) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] < min_position_threshold))).sum()
+        specific = ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] >= min_position_threshold)).sum()
         non_specific = (df["Fitted Segment Count"] > 1).sum()
         total = no_interaction + specific + non_specific
         el = [Path(file).stem, no_interaction, specific, non_specific, round(no_interaction/total*100,1), round(specific/total*100,1), round(non_specific/total*100,1)]
         interaction_count_list.append(el)
         
         # Filter out data that is considered as having no interaction
-        df = df[(df["Fitted Segment Count"] > 1) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [m]"] >= min_position_threshold))]
-
-        # Drop unnecessary columns
-        df = df.drop(columns=['Position Index', 'X Position', 'Y Position','Baseline Offset [N]', 'Baseline Slope [N/m]','Contact Point Offset [m]', 'Minimum Value [N]','Minimum Position [m]', 'Filter Group', 'Lower Bound [m]','Upper Bound [m]', 'Fitted Segment Count'])
+        df = df[(df["Fitted Segment Count"] > 1) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] >= min_position_threshold))]
         
         # Round values to one decimal place
         df = df.round(1)
@@ -85,10 +82,7 @@ def analyse_general(files, directory, min_position_threshold):
         filtered_data.append((df,file))
 
     interaction_count_df = pd.DataFrame(interaction_count_list, columns=['File Name', 'No Interaction', 'Specific', 'Non-specific','No Interaction %', 'Specific %', 'Non-specific %'])
-    # interaction_count_df.to_csv(f"{directory}\\{GENERAL_FOLDER}\\interaction_counts.csv", index=False)
-    
-    # save_filtered_dfs(filtered_data, f"{directory}\\{GENERAL_FOLDER}")
-    
+        
     return filtered_data, interaction_count_df
 
 
@@ -108,6 +102,12 @@ def count_fitting_segments(filtered_data, num_categories=5):
     dictionary = {}
     count_num_fitting_segments_df = pd.DataFrame()
     
+    # Create an index for the dataframe
+    index = [str(i) for i in range(1, num_categories)]
+    index.append(f"\u2265{num_categories}")
+    
+    count_num_fitting_segments_df = pd.concat([count_num_fitting_segments_df, pd.Series(index, index=index)], axis=1)
+    
     for (df, file) in filtered_data:
         
         # Count number of occurrences of each file name
@@ -119,16 +119,14 @@ def count_fitting_segments(filtered_data, num_categories=5):
         for i in range(1, num_categories):
             count_num_fitting_segments.append((num_fitting_segments == i).sum())
         
+        # Determine the number of occurrences of the last category
         count_num_fitting_segments.append((num_fitting_segments >= num_categories).sum())
         
-        # Create an index for the dataframe
-        index = [str(i) for i in range(1, num_categories)]
-        index.append(f"≥{num_categories}")
-        
+        # Convert the list to a series
         count_num_fitting_segments_series = pd.Series(count_num_fitting_segments, index=index, name=Path(file).stem)
         
+        # Add the series to the dataframe
         count_num_fitting_segments_df = pd.concat([count_num_fitting_segments_df, count_num_fitting_segments_series], axis=1)
-        # count_num_fitting_segments_series.to_csv(f"{directory}\\{CHAIN_FIT_FOLDER}\\{Path(file).stem}_count.csv")
         
         dictionary[Path(file).stem] = count_num_fitting_segments_series
     
@@ -171,27 +169,31 @@ def save_filtered_dfs(filtered_data, directory):
 
 
 
-def compile_parameter(filtered_data, parameter_name):
+def compile_parameter(filtered_data, parameter_names):
     """
     This function compiles a parameter from the filtered data and and also adds it all onto one dataframe.
     
     Parameters:
     filtered_data (list): The list of filtered data of the format (file, dataframe).
-    parameter_name (str): The name of the parameter to compile.
+    parameter_names (str | list): The name of the parameter(s) to compile.
     
     Returns:
     parameters_dict (dict): The dictionary containing the parameter values.
     """
     parameters_dict = {}
+    
+    if isinstance(parameter_names, str):
+        parameter_names = [parameter_names]
 
     for filtered_df, file in filtered_data:
         
-        # Rename file names and have them as column headers for each file
-        segments = Path(file).stem.split("-")
-        new_name = segments[0] + "-" + segments[-1]
-        
-        # Add each column to a dictionary
-        parameters_dict[new_name] = filtered_df[parameter_name].tolist()
+        for parameter_name in parameter_names:
+            # Rename file names and have them as column headers for each file
+            segments = Path(file).stem.split("-")
+            new_name = segments[0]+ "-" + parameter_name + "-" + segments[-1] 
+            
+            # Add each column to a dictionary
+            parameters_dict[new_name] = filtered_df[parameter_name].tolist()
     
     # Ensure all lists in the dictionary are the same length
     parameters_dict_padded = {}
