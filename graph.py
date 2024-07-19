@@ -4,35 +4,6 @@ import numpy as np
 import os
 
 
-
-def fix_labels(labels, tooclose=0.1, outer_radius = 1.25):
-    """
-    This function fixes the labels of a pie chart so that they do not overlap (for the most part). If the labels overlap, then the function will move them out of the pie chart as specified by the outer radius.
-    
-    Parameters:
-    labels (list): The labels of the pie chart.
-    tooclose (float): The minimum distance between two labels.
-    outer_radius (float): The adjusted distance from the center of the pie chart to the label
-    """
-    
-    for i in range(0, len(labels)-1):
-        
-        for j in range(i+1, len(labels)):
-            
-            a = np.array(labels[i].get_position())
-            b = np.array(labels[j].get_position())
-            
-            dist = np.linalg.norm(a-b)
-            
-            if dist < tooclose:
-                
-                norm_b = b / np.linalg.norm(b)
-                
-                labels[j].set_x(norm_b[0]*outer_radius)
-                labels[j].set_y(norm_b[1]*outer_radius)
-
-
-
 def create_custom_pie_chart_legend(axis, series, colors = list(mpl.rcParams["axes.prop_cycle"])):    
     """
     This function generates a custom legend with square markers for a pie chart.
@@ -64,13 +35,14 @@ def create_pie_chart_set(dictionary, filename, directory):
 
     for i, (key, values) in enumerate(dictionary.items()):
         
-        wedges, labels, autopct = axis[i].pie(values, autopct='%1.1f', startangle=90)
-        
-        fix_labels(autopct)
-        
+        axis[i].pie(values, autopct='%1.1f', startangle=90)
+                
         create_custom_pie_chart_legend(axis[i], values)
     
     figure.tight_layout()
+    
+    # Output Text
+    plt.rcParams['svg.fonttype'] = 'none'
     
     plt.savefig(f"{directory}\\{filename}.svg")
     
@@ -129,7 +101,7 @@ def create_pie_charts_root(dictionary, directory):
 
 
 
-def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_width = 20, legend_names = ["Cell Division", "Elongation", "Maturation"], x_axis_range=[0,500], colors=["red","cyan","yellow"]):
+def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_width = 20, x_axis_range=[0,500], colors=["red","cyan","yellow"]):
     """
     This function creates a set of three histograms.
     
@@ -144,6 +116,9 @@ def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_
     x_axis_range (list): The range of the x-axis.
     colors (list): The list containing colors for each of the three histograms.
     """
+    
+    legend_names = {"M":"Maturation", "E":"Elongation", "CD":"Cell Division"}
+    
     figure, axis = plt.subplots(3, 1, figsize=(8, 8)) 
 
     for i, (key, values) in enumerate(dictionary.items()):
@@ -154,7 +129,7 @@ def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_
         elif(y_label == "Frequency"):
             weights = np.ones_like(values) / np.array(values).size
         
-        axis[i].hist(values, bins=np.arange(x_axis_range[0], x_axis_range[1], bar_width), weights = weights , label=legend_names[i], color=colors[i], edgecolor = "black")
+        axis[i].hist(values, bins=np.arange(x_axis_range[0], x_axis_range[1], bar_width), weights = weights , label=legend_names[key], color=colors[i], edgecolor = "black")
         
         axis[i].set_xlim(x_axis_range)
         axis[i].legend(loc="upper right")
@@ -166,6 +141,9 @@ def create_histogram_set(dictionary, filename, y_label, directory, x_label, bar_
     
     # Adjust y axis
     plt.setp(axis, ylim=max([a.get_ylim() for a in axis.reshape(-1)]))
+    
+    # Output Text
+    plt.rcParams['svg.fonttype'] = 'none'
     
     plt.savefig(f"{directory}\\{filename}.svg")
     
@@ -187,7 +165,7 @@ def create_histograms_root(dictionary, directory, x_axis_upper_bound, x_label="B
         os.makedirs(directory)
     
     # Create dictionary to store combined histogram data
-    final = {"CD": [], "E": [], "M": []}
+    final = {"M": [], "E": [], "CD": []}
     
     names = create_sub_dictionaries(dictionary)
     
