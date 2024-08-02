@@ -5,7 +5,6 @@ import numpy as np
 import os
 
 
-
 def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms):
     """
     This function analyzes the chain fits data and filters out data that is not within the expected range and adjusts units.
@@ -42,7 +41,6 @@ def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour
     return filtered_dfs
 
 
-
 def analyse_general(files, min_position_threshold):
     """
     This function analyzes the general data and filters the data considered as having no interaction and adjusts units. It also counts the number of interactions for each interaction type.
@@ -54,10 +52,10 @@ def analyse_general(files, min_position_threshold):
     Returns:
     (tuple): The filtered data and the interaction count dataframe.
     """
-    
+
     filtered_data = []
     interaction_count_list = []
-    
+
     for file in files:
         df = pd.read_csv(file, sep="\t")
 
@@ -66,25 +64,27 @@ def analyse_general(files, min_position_threshold):
         df = units.change_column_prefix(df, "Minimum Position [m]", "n")
 
         # Count interactions and append them to the interaction counts list
-        no_interaction = ((df["Fitted Segment Count"] == 0) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] < min_position_threshold))).sum()
-        specific = ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] >= min_position_threshold)).sum()
-        non_specific = (df["Fitted Segment Count"] > 1).sum()
+        no_interaction = (df["Fitted Segment Count"] == 0).sum()
+        non_specific = ((df["Fitted Segment Count"] == 1) & (
+            df["Minimum Position [nm]"] < min_position_threshold
+        )).sum()
+        specific = (
+            (df["Fitted Segment Count"] > 1)| 
+            ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] >= min_position_threshold))
+        ).sum()
+
         total = no_interaction + specific + non_specific
         el = [Path(file).stem, no_interaction, specific, non_specific, round(no_interaction/total*100,1), round(specific/total*100,1), round(non_specific/total*100,1)]
         interaction_count_list.append(el)
-        
+
         # Filter out data that is considered as having no interaction
-        df = df[(df["Fitted Segment Count"] > 1) | ((df["Fitted Segment Count"] == 1) & (df["Minimum Position [nm]"] >= min_position_threshold))]
-        
-        # Round values to one decimal place
-        df = df.round(1)
-        
+        df = df[df["Fitted Segment Count"] >= 1]
+
         filtered_data.append((df,file))
 
     interaction_count_df = pd.DataFrame(interaction_count_list, columns=['File Name', 'No Interaction', 'Specific', 'Non-specific','No Interaction %', 'Specific %', 'Non-specific %'])
-        
-    return filtered_data, interaction_count_df
 
+    return filtered_data, interaction_count_df
 
 
 def count_fitting_segments(filtered_data, num_categories=5):
@@ -151,7 +151,6 @@ def max_length_dict(dictionary):
     return max_length
 
 
-
 def save_filtered_dfs(filtered_data, directory):
     """
     This function saves the filtered data to new CSV files.
@@ -166,7 +165,6 @@ def save_filtered_dfs(filtered_data, directory):
     
     for filtered_df, file in filtered_data:
         filtered_df.to_csv(f"{directory}\\{Path(file).stem}_filtered.csv", index=False)
-
 
 
 def compile_parameter(filtered_data, parameter_names):
@@ -207,7 +205,6 @@ def compile_parameter(filtered_data, parameter_names):
     return parameters_dict, parameters_df
 
 
-
 if __name__ == "__main__":
     
     # For testing purposes only.
@@ -221,5 +218,3 @@ if __name__ == "__main__":
     breaking_force_dict = compile_parameter(filtered_data, directory, "Breaking Force [pN]", "breaking_force")
     
     graph.create_histograms_root(breaking_force_dict, directory, 500)
-    
-
