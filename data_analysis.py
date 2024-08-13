@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 
-def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms):
+def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms, apply_filter = True):
     """
     This function analyzes the chain fits data and filters out data that is not within the expected range and adjusts units.
     
@@ -33,8 +33,9 @@ def analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour
         df = units.change_column_prefix(df, "Residual RMS [N]", "p")
         df = units.change_column_prefix(df, "Breaking Force [N]", "p")
 
-        # Filter out data that is not within the expected range
-        df = df[(df["Bending Length [pm]"] < max_bending_length) & (df["Bending Length [pm]"] > min_bending_length) & (df["Contour Length [nm]"] < max_contour_length) & (df["Contour Length [nm]"] > min_contour_length) & (df["Residual RMS [pN]"] < max_residual_rms)]
+        if apply_filter:
+            # Filter out data that is not within the expected range
+            df = df[(df["Bending Length [pm]"] < max_bending_length) & (df["Bending Length [pm]"] > min_bending_length) & (df["Contour Length [nm]"] < max_contour_length) & (df["Contour Length [nm]"] > min_contour_length) & (df["Residual RMS [pN]"] < max_residual_rms)]
         
         filtered_dfs.append((df,file))
     
@@ -131,6 +132,34 @@ def count_fitting_segments(filtered_data, num_categories=5):
         dictionary[Path(file).stem] = count_num_fitting_segments_series
     
     return dictionary, count_num_fitting_segments_df
+
+def get_contour_length_differences(filtered_data):
+    
+    contour_length_differences_data = []
+    
+    for (df, file) in filtered_data:
+        
+        filename_set = set(df["Filename"])
+        
+        contour_length_differences_list = []
+        
+        for filename in filename_set:
+            
+            df_filename = df[df["Filename"] == filename]
+            
+            df_filename = df_filename.sort_values(by=["Index"])
+                        
+            for i in range(1, len(df_filename)):
+                    
+                    contour_length_difference = df_filename["Contour Length [nm]"].iloc[i] - df_filename["Contour Length [nm]"].iloc[i-1]
+                    
+                    contour_length_differences_list.append([filename, contour_length_difference])
+                    
+        contour_length_differences_df = pd.DataFrame(contour_length_differences_list, columns=["Filename", "Contour Length Difference [nm]"])
+        
+        contour_length_differences_data.append((contour_length_differences_df, file))
+    
+    return contour_length_differences_data
 
 def max_length_dict(dictionary):
     """
