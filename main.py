@@ -64,7 +64,7 @@ class AFMDataAnalyzer(tk.Tk):
             case _:
                 raise ValueError("Invalid mode")
         
-        self.canvas.create_window((0, 0), window=self.page, anchor='nw', height=700, width=self.width)
+        self.canvas.create_window((0, 0), window=self.page, anchor='nw', height=800, width=self.width)
 
         self.canvas.config(scrollregion=self.canvas.bbox('all'))
         
@@ -162,6 +162,8 @@ class ChainFit(tk.Frame):
         self.save_breaking_forces_histograms = tk.BooleanVar()
         self.save_count_num_fitting_segments = tk.BooleanVar()
         self.save_fitting_segment_pie_charts = tk.BooleanVar()
+        self.save_contour_length_differences = tk.BooleanVar()
+        self.apply_filter = tk.BooleanVar(value=True)
         
         self.columnconfigure(0, weight=1)
         
@@ -169,6 +171,7 @@ class ChainFit(tk.Frame):
             tk.Label(self, text="Analyse Chain Fit AFM Data"),
             FileSelector(self),
             DirectorySelector(self),
+            tk.Checkbutton(self, text = "Filter Data", variable = self.apply_filter),
             InputBox(self, name="Max Bending Length [pm]: ", default_value="4000"),
             InputBox(self, name="Min Bending Length [pm]: ", default_value="20"),
             InputBox(self, name="Max Contour Length [nm]: ", default_value="5000"),
@@ -180,6 +183,7 @@ class ChainFit(tk.Frame):
             tk.Checkbutton(self, text = "Save Breaking Forces Histograms (Based on Root Regions)", variable = self.save_breaking_forces_histograms),
             tk.Checkbutton(self, text = "Save Number of Fitting Segments Data", variable = self.save_count_num_fitting_segments),
             tk.Checkbutton(self, text = "Save Fitting Segments Pie Charts (Based on Root Regions)", variable = self.save_fitting_segment_pie_charts),
+            tk.Checkbutton(self, text = "Save Contour Length Differences", variable = self.save_contour_length_differences),
             tk.Button(self, text="Run", command=self.run)
         ]
         
@@ -196,13 +200,13 @@ class ChainFit(tk.Frame):
         
         directory = self.elements[2].get_directory()
 
-        max_bending_length = float(self.elements[3].get_input())
-        min_bending_length = float(self.elements[4].get_input())
-        max_contour_length = float(self.elements[5].get_input())
-        min_contour_length = float(self.elements[6].get_input())
-        max_residual_rms = float(self.elements[7].get_input())
+        max_bending_length = float(self.elements[4].get_input())
+        min_bending_length = float(self.elements[5].get_input())
+        max_contour_length = float(self.elements[6].get_input())
+        min_contour_length = float(self.elements[7].get_input())
+        max_residual_rms = float(self.elements[8].get_input())
         
-        filtered_data = da.analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms)
+        filtered_data = da.analyse_chain_fit(files, max_bending_length, min_bending_length, max_contour_length, min_contour_length, max_residual_rms, apply_filter=self.apply_filter.get())
         
         if self.save_filtered_data.get():
             da.save_filtered_dfs(filtered_data, f"{directory}\\filtered_chain_fits_data")
@@ -213,7 +217,7 @@ class ChainFit(tk.Frame):
             breaking_forces_df.to_csv(f"{directory}\\breaking_forces.csv", index=False)
         
         if self.save_breaking_forces_histograms.get():
-            graph.create_histograms_root(breaking_forces_dictionary, f"{directory}\\graphs", float(self.elements[10].get_input()))
+            graph.create_histograms_root(breaking_forces_dictionary, f"{directory}\\graphs", float(self.elements[11].get_input()))
         
         count_num_fitting_segments_dictionary, count_num_fitting_segments_df = da.count_fitting_segments(filtered_data)
 
@@ -223,6 +227,9 @@ class ChainFit(tk.Frame):
         if(self.save_fitting_segment_pie_charts.get()):
             graph.create_pie_charts_root(count_num_fitting_segments_dictionary, f"{directory}\\graphs")
         
+        if self.save_contour_length_differences.get():
+            contour_length_differences_data = da.get_contour_length_differences(filtered_data)
+            da.save_filtered_dfs(contour_length_differences_data, f"{directory}\\filtered_chain_fits_data")
     
         
 class FileSelector(tk.Frame):
